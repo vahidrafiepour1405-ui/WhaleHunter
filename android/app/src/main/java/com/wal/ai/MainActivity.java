@@ -125,14 +125,16 @@ public class MainActivity extends Activity {
         TextView st=tv("Loading real whale data...",14);content.addView(st);
         new Thread(()->{
             try{
-                JSONArray candidates=getJson("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
+                Object candidates=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
                 runOnUiThread(()->{st.setText("LIVE • HypurrTrace wealth rich list");renderGeneric(st.getParent(),candidates);});
             }catch(Exception e){runOnUiThread(()->st.setText("INSUFFICIENT DATA — HypurrTrace unavailable"));}}
         ).start();
     }
 
-    void renderGeneric(View parent,JSONArray a){
-        LinearLayout box=(LinearLayout)parent;int count=0;
+    void renderGeneric(View parent,Object raw){
+        LinearLayout box=(LinearLayout)parent;JSONArray a=raw instanceof JSONArray?(JSONArray)raw:null;
+        if(a==null && raw instanceof JSONObject){JSONObject o=(JSONObject)raw;a=o.optJSONArray("items");if(a==null)a=o.optJSONArray("results");if(a==null)a=o.optJSONArray("data");}
+        if(a==null){box.addView(tv("Provider returned a non-list response → INSUFFICIENT DATA",13));return;} int count=0;
         for(int i=0;i<a.length()&&count<100;i++)try{
             JSONObject o=a.getJSONObject(i);String addr=find(o,"address","user","owner");if(addr.isEmpty())continue;
             String val=find(o,"usdValue","valueUsd","totalUsd","accountValue");String label=find(o,"label","name");
@@ -151,7 +153,8 @@ public class MainActivity extends Activity {
         content.addView(tv("Important: complete multi-chain top-100 holder census requires indexed providers for each network/token. WAL reports INSUFFICIENT DATA rather than pretending coverage exists.",11));
     }
 
-    JSONArray getJson(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("Accept","application/json");int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);if(code<200||code>=300)throw new IOException("HTTP "+code);return new JSONArray(s.toString());}
+    Object getJsonAny(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("Accept","application/json");int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);if(code<200||code>=300)throw new IOException("HTTP "+code);String body=s.toString().trim();if(body.startsWith("["))return new JSONArray(body);return new JSONObject(body);}
+    JSONArray getJson(String u)throws Exception{Object o=getJsonAny(u);if(o instanceof JSONArray)return (JSONArray)o;throw new IOException("Expected array");}
     void loadMarkets(){new Thread(()->{try{tickers=getJson("https://api.binance.com/api/v3/ticker/24hr");runOnUiThread(()->{status.setText("● LIVE");status.setTextColor(green);home();});}catch(Exception e){runOnUiThread(()->{status.setText("● OFFLINE");status.setTextColor(red);});}}).start();}
     String fmt(double x){if(x>=1000)return String.format(Locale.US,"%,.2f",x);if(x>=1)return String.format(Locale.US,"%.4f",x);if(x>=.01)return String.format(Locale.US,"%.5f",x);return String.format(Locale.US,"%.8f",x);}
     String fmt2(double x){return String.format(Locale.US,"%.2f",x);}
