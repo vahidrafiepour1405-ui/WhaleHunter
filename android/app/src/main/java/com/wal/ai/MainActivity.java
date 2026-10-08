@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
         new Thread(()->{
             try{
                 Object candidates=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
-                runOnUiThread(()->{st.setText("LIVE • HypurrTrace wealth rich list");renderGeneric(st.getParent(),candidates);});
+                runOnUiThread(()->{st.setText("LIVE • HypurrTrace wealth rich list");renderGeneric((View)st.getParent(),candidates);});
             }catch(Exception e){runOnUiThread(()->st.setText("INSUFFICIENT DATA — HypurrTrace unavailable"));}}
         ).start();
     }
@@ -144,7 +144,7 @@ public class MainActivity extends Activity {
         else container.addView(tv("Verified independent whales: 0 until each address passes classification. Candidate records: "+count,11));
     }
 
-    String find(JSONObject o,String...keys){for(String k:keys)if(o.has(k)&&!o.optString(k).isEmpty())return o.optString(k);for(String k:o.keySet()){Object v=o.opt(k);if(v instanceof JSONObject){String r=find((JSONObject)v,keys);if(!r.isEmpty())return r;} }return "";}
+    String find(JSONObject o,String...keys){for(String k:keys)if(o.has(k)&&!o.optString(k).isEmpty())return o.optString(k);for(int i=0;i<o.names().length();i++){String k=o.names().optString(i);Object v=o.opt(k);if(v instanceof JSONObject){String r=find((JSONObject)v,keys);if(!r.isEmpty())return r;} }return "";}
 
     void intel(){
         content.removeAllViews();content.addView(tv("WAL Intelligence",27));content.addView(tv("Provider health and evidence policy",13));
