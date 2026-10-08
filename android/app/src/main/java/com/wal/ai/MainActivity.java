@@ -146,7 +146,17 @@ public class MainActivity extends Activity {
 
     String find(JSONObject o,String...keys){for(String k:keys)if(o.has(k)&&!o.optString(k).isEmpty())return o.optString(k);for(int i=0;i<o.names().length();i++){String k=o.names().optString(i);Object v=o.opt(k);if(v instanceof JSONObject){String r=find((JSONObject)v,keys);if(!r.isEmpty())return r;} }return "";}
 
-    void intel(){
+
+    void trade(){
+        content.removeAllViews();content.addView(tv("WAL Trading",27));content.addView(tv("اتصال به صرافی‌ها و اجرای سفارش — با تأیید کاربر",12));
+        TextView warn=tv("امنیت: API فقط برای Trading/Read ساخته شود؛ دسترسی Withdrawal هرگز لازم نیست. کلیدها داخل APK ذخیره نمی‌شوند.",11);warn.setBackground(box(Color.rgb(255,248,225),12));content.addView(warn);
+        Button lb=btn("LBank  •  Spot Trading");content.addView(lb);lb.setOnClickListener(v->exchange("LBank","https://www.lbank.com"));
+        Button ex=btn("صرافی ایرانی  •  Exir");content.addView(ex);ex.setOnClickListener(v->exchange("Exir","https://www.exir.io/api/"));
+        Button manual=btn("اتصال امن API");content.addView(manual);manual.setOnClickListener(v->{new AlertDialog.Builder(this).setTitle("اتصال API").setMessage("برای معامله واقعی، اتصال باید از طریق backend امن انجام شود. در نسخه فعلی هیچ API Key در اپ ذخیره یا ارسال نمی‌شود.\n\nLBank: Trading API\nExir: API Key\n\nپس از راه‌اندازی backend، سفارش BUY/SELL فقط با تأیید نهایی شما ارسال خواهد شد.").setPositiveButton("متوجه شدم",null).show();});
+        content.addView(tv("LBank رسماً API برای Trading دارد و دسترسی برداشت جداست. Exir نیز REST/WebSocket و API برای معامله خودکار ارائه می‌کند.",11));
+    }
+    void exchange(String name,String url){try{startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,android.net.Uri.parse(url)));}catch(Exception e){}}
+\n    void intel(){
         content.removeAllViews();content.addView(tv("WAL Intelligence",27));content.addView(tv("Provider health and evidence policy",13));
         String[] rows={"Binance Market/Candles — LIVE","Technical Engine — LOCAL / DETERMINISTIC","HyperEVM HypurrTrace — LIVE WHEN AVAILABLE","Exchange/LP/contract filtering — CONSERVATIVE","Unknown wallet classification — UNVERIFIED","Offline mode — LAST KNOWN DATA ONLY","Fake/random/mock values — DISABLED"};
         for(String r:rows){TextView x=tv("●  "+r,13);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(52)));Space s=new Space(this);content.addView(s,new LinearLayout.LayoutParams(1,d(5)));}
