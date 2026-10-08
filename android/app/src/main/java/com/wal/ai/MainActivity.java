@@ -132,16 +132,16 @@ public class MainActivity extends Activity {
     }
 
     void renderGeneric(View parent,Object raw){
-        LinearLayout box=(LinearLayout)parent;JSONArray a=raw instanceof JSONArray?(JSONArray)raw:null;
+        LinearLayout container=(LinearLayout)parent;JSONArray a=raw instanceof JSONArray?(JSONArray)raw:null;
         if(a==null && raw instanceof JSONObject){JSONObject o=(JSONObject)raw;a=o.optJSONArray("items");if(a==null)a=o.optJSONArray("results");if(a==null)a=o.optJSONArray("data");}
-        if(a==null){box.addView(tv("Provider returned a non-list response → INSUFFICIENT DATA",13));return;} int count=0;
+        if(a==null){container.addView(tv("Provider returned a non-list response → INSUFFICIENT DATA",13));return;} int count=0;
         for(int i=0;i<a.length()&&count<100;i++)try{
             JSONObject o=a.getJSONObject(i);String addr=find(o,"address","user","owner");if(addr.isEmpty())continue;
             String val=find(o,"usdValue","valueUsd","totalUsd","accountValue");String label=find(o,"label","name");
-            TextView x=tv((count+1)+". "+shortAddr(addr)+"    $"+(val.isEmpty()?"—":val)+(label.isEmpty()?"":"   "+label),12);x.setBackground(box(Color.WHITE,10));box.addView(x);count++;
+            TextView x=tv((count+1)+". "+shortAddr(addr)+"    $"+(val.isEmpty()?"—":val)+(label.isEmpty()?"":"   "+label),12);x.setBackground(MainActivity.this.box(Color.WHITE,10));container.addView(x);count++;
         }catch(Exception ignored){}
-        if(count==0)box.addView(tv("Provider returned no parseable whale records → INSUFFICIENT DATA",13));
-        else box.addView(tv("Verified independent whales: 0 until each address passes classification. Candidate records: "+count,11));
+        if(count==0)container.addView(tv("Provider returned no parseable whale records → INSUFFICIENT DATA",13));
+        else container.addView(tv("Verified independent whales: 0 until each address passes classification. Candidate records: "+count,11));
     }
 
     String find(JSONObject o,String...keys){for(String k:keys)if(o.has(k)&&!o.optString(k).isEmpty())return o.optString(k);for(String k:o.keySet()){Object v=o.opt(k);if(v instanceof JSONObject){String r=find((JSONObject)v,keys);if(!r.isEmpty())return r;} }return "";}
