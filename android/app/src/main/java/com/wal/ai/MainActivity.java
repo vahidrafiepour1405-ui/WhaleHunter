@@ -110,7 +110,7 @@ public class MainActivity extends Activity {
     double rsi(double[] x,int p){double g=0,l=0;for(int i=Math.max(1,x.length-p);i<x.length;i++){double d=x[i]-x[i-1];if(d>=0)g+=d;else l-=d;}if(l==0)return 100;return 100-(100/(1+g/l));}
     double macd(double[] x){return ema(x,12)-ema(x,26);}
     void signals(){
-        content.removeAllViews();content.addView(tv("WAL Signals",27));content.addView(tv("فقط تحلیل قاعده‌مند از کندل زنده؛ بدون اعتمادسازی ساختگی.",12));
+        content.removeAllViews();content.addView(tv("سیگنال‌های وال",27));content.addView(tv("فقط تحلیل قاعده‌مند از کندل زنده؛ بدون اعتمادسازی ساختگی.",12));
         if(tickers==null){content.addView(tv("INSUFFICIENT DATA",15));return;}
         int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(!s.endsWith("USDT"))continue;assetSignalCard(s);shown++;}catch(Exception ignored){}
     }
@@ -269,7 +269,24 @@ public class MainActivity extends Activity {
 
     Object getJsonAny(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("Accept","application/json");int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);if(code<200||code>=300)throw new IOException("HTTP "+code);String body=s.toString().trim();if(body.startsWith("["))return new JSONArray(body);return new JSONObject(body);}
     JSONArray getJson(String u)throws Exception{Object o=getJsonAny(u);if(o instanceof JSONArray)return (JSONArray)o;throw new IOException("Expected array");}
-    void loadMarkets(){new Thread(()->{try{tickers=getJson("https://api.binance.com/api/v3/ticker/24hr");runOnUiThread(()->{status.setText("● LIVE");status.setTextColor(green);home();});}catch(Exception e){runOnUiThread(()->{status.setText("● OFFLINE");status.setTextColor(red);});}}).start();}
+    void loadMarkets(){
+        status.setText("● در حال اتصال");status.setTextColor(blue);
+        new Thread(()->{
+            String[] hosts={"https://api.binance.com/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"};
+            Exception last=null;JSONArray data=null;
+            for(String endpoint:hosts){try{data=getJson(endpoint);if(data!=null&&data.length()>0)break;}catch(Exception e){last=e;}}
+            final JSONArray found=data;final Exception failure=last;
+            runOnUiThread(()->{
+                if(found!=null&&found.length()>0){tickers=found;status.setText("● بازار زنده");status.setTextColor(green);home();}
+                else{status.setText("● اتصال ناموفق — لمس برای تلاش مجدد");status.setTextColor(red);status.setOnClickListener(v->loadMarkets());
+                    content.removeAllViews();content.addView(tv("اتصال به API بازار ناموفق بود.",18));
+                    content.addView(tv("این الزاماً به معنی قطع اینترنت گوشی نیست؛ ممکن است دسترسی به سرویس بازار مسدود یا موقتاً قطع باشد.",13));
+                    content.addView(tv("خطا: "+(failure==null?"پاسخ خالی":failure.getClass().getSimpleName()+": "+failure.getMessage()),11));
+                    Button retry=btn("تلاش دوباره");retry.setOnClickListener(v->loadMarkets());content.addView(retry,new LinearLayout.LayoutParams(-1,d(48)));
+                }
+            });
+        }).start();
+    }
     String fmt(double x){if(x>=1000)return String.format(Locale.US,"%,.2f",x);if(x>=1)return String.format(Locale.US,"%.4f",x);if(x>=.01)return String.format(Locale.US,"%.5f",x);return String.format(Locale.US,"%.8f",x);}
     String fmt2(double x){return String.format(Locale.US,"%.2f",x);}
     String shortNum(double x){if(x>=1e9)return String.format(Locale.US,"%.2fB",x/1e9);if(x>=1e6)return String.format(Locale.US,"%.2fM",x/1e6);if(x>=1e3)return String.format(Locale.US,"%.2fK",x/1e3);return String.format(Locale.US,"%.0f",x);}
