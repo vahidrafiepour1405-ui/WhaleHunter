@@ -38,12 +38,12 @@ public class MainActivity extends Activity {
 
     void home(){
         content.removeAllViews();
-        TextView h=tv("WAL Intelligence",27);h.setTypeface(null,1);content.addView(h);
-        content.addView(tv("Real market data • deterministic analysis • no fabricated whales",12));
-        EditText q=new EditText(this);q.setHint("WAL Search AI — name / symbol / contract");q.setSingleLine();q.setPadding(d(14),0,d(14),0);q.setBackground(box(Color.WHITE,14));content.addView(q,new LinearLayout.LayoutParams(-1,d(54)));
+        TextView h=tv("هوش وال",27);h.setTypeface(null,1);content.addView(h);
+        content.addView(tv("داده واقعی بازار • تحلیل قاعده‌مند • بدون جعل اطلاعات نهنگ",12));
+        EditText q=new EditText(this);q.setHint("وال سرچ هوش مصنوعی — نام یا نماد ارز");q.setSingleLine();q.setPadding(d(14),0,d(14),0);q.setBackground(box(Color.WHITE,14));content.addView(q,new LinearLayout.LayoutParams(-1,d(54)));
         LinearLayout nav=new LinearLayout(this);
-        String[] ns={"MARKETS","SIGNALS","WHALE RADAR","INTELLIGENCE"};
-        for(String n:ns){Button x=btn(n);nav.addView(x,new LinearLayout.LayoutParams(0,d(48),1));if(n.equals("MARKETS"))x.setOnClickListener(v->markets());if(n.equals("SIGNALS"))x.setOnClickListener(v->signals());if(n.equals("WHALE RADAR"))x.setOnClickListener(v->radar());if(n.equals("INTELLIGENCE"))x.setOnClickListener(v->intel());}
+        String[] ns={"بازار","سیگنال‌ها","رادار نهنگ","هوش و وضعیت"};
+        for(String n:ns){Button x=btn(n);nav.addView(x,new LinearLayout.LayoutParams(0,d(48),1));if(n.equals("بازار"))x.setOnClickListener(v->markets());if(n.equals("سیگنال‌ها"))x.setOnClickListener(v->signals());if(n.equals("رادار نهنگ"))x.setOnClickListener(v->radar());if(n.equals("هوش و وضعیت"))x.setOnClickListener(v->intel());}
         content.addView(nav);
         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);content.addView(list);
         q.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int e){}public void afterTextChanged(Editable e){}public void onTextChanged(CharSequence s,int a,int b,int c){renderMarkets(list,s.toString());}});
@@ -61,7 +61,7 @@ public class MainActivity extends Activity {
             LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(d(10),d(9),d(10),d(9));c.setBackground(box(Color.WHITE,14));
             TextView a=tv(s.replace("USDT","")+"    $"+fmt(p),17);a.setTypeface(null,1);c.addView(a);
             TextView x=tv("24h  "+fmt2(ch)+"%    •    Vol $"+shortNum(vol),12);x.setTextColor(ch>=0?green:red);c.addView(x);
-            c.addView(tv("LIVE MARKET  •  Tap for chart + WAL signal",10));
+            c.addView(tv("بازار زنده • برای نمودار و سیگنال لمس کن",10));
             c.setOnClickListener(v->asset(s));
             list.addView(c,new LinearLayout.LayoutParams(-1,d(86)));Space sp=new Space(this);list.addView(sp,new LinearLayout.LayoutParams(1,d(7)));n++;
         }catch(Exception ignored){}
@@ -69,13 +69,13 @@ public class MainActivity extends Activity {
 
     void asset(String symbol){
         selected=symbol;content.removeAllViews();
-        TextView back=tv("‹  BACK",13);back.setOnClickListener(v->home());content.addView(back);
+        TextView back=tv("‹  بازگشت",13);back.setOnClickListener(v->home());content.addView(back);
         TextView h=tv(symbol.replace("USDT",""),27);h.setTypeface(null,1);content.addView(h);
-        TextView price=tv("Loading live price...",18);content.addView(price);
+        TextView price=tv("در حال دریافت قیمت زنده...",18);content.addView(price);
         LinearLayout tf=new LinearLayout(this);String[] tfs={"1m","5m","15m","1h","4h","1d","1w","1M"};for(String tfv:tfs){Button b=btn(tfv);tf.addView(b,new LinearLayout.LayoutParams(0,d(42),1));b.setOnClickListener(v->loadChart(symbol,tfv,price));}content.addView(tf);
         ChartView chart=new ChartView(this);chart.setBackgroundColor(Color.WHITE);content.addView(chart,new LinearLayout.LayoutParams(-1,d(330)));
-        content.addView(tv("WAL SIGNAL",16));TextView sig=tv("Calculating...",15);sig.setPadding(d(12),d(10),d(12),d(10));sig.setBackground(box(Color.WHITE,12));content.addView(sig);
-        content.addView(tv("Evidence Strength is computed from live price/volume/technical confirmations. It is not a prediction accuracy percentage.",10));
+        content.addView(tv("سیگنال وال",16));TextView sig=tv("در حال محاسبه...",15);sig.setPadding(d(12),d(10),d(12),d(10));sig.setBackground(box(Color.WHITE,12));content.addView(sig);
+        content.addView(tv("قدرت شواهد از قیمت، حجم و شاخص‌های تکنیکال زنده محاسبه می‌شود؛ درصد دقت پیش‌بینی نیست.",10));
         loadChart(symbol,"1h",price,chart,sig);
     }
 
@@ -93,7 +93,7 @@ public class MainActivity extends Activity {
                     if(chart!=null)chart.setData(cs);
                     if(sig!=null)sig.setText(s.text);
                 });
-            }catch(Exception e){runOnUiThread(()->price.setText("INSUFFICIENT DATA — "+e.getClass().getSimpleName()));}
+            }catch(Exception e){runOnUiThread(()->price.setText("داده ناکافی — "+e.getClass().getSimpleName()));}
         }).start();
     }
 
@@ -103,20 +103,20 @@ public class MainActivity extends Activity {
         for(int i=Math.max(0,n-21);i<n-1;i++)volAvg+=c.get(i).v;volAvg/=Math.max(1,Math.min(20,n-1));
         int score=0;if(closes[n-1]>ema20)score+=20;if(ema20>ema50)score+=20;if(rsi>=50&&rsi<=70)score+=15;if(m>0)score+=15;if(volNow>volAvg*1.15)score+=15;if(closes[n-1]>closes[Math.max(0,n-6)])score+=15;
         String s=score>=70?"BUY":score<=30?"SELL":"WAIT";
-        String reason="Signal: "+s+"\nEvidence Strength: "+score+"/100\nRSI: "+fmt2(rsi)+"  |  EMA20/50: "+(ema20>ema50?"BULLISH":"BEARISH")+"\nMACD: "+(m>0?"POSITIVE":"NEGATIVE")+"  |  Volume: "+(volNow>volAvg*1.15?"EXPANSION":"NORMAL")+"\nData Quality: LIVE CANDLE DATA\nRule: deterministic; no random values.";
+        String reason="سیگنال: "+s+"\nقدرت شواهد: "+score+"/100\nRSI: "+fmt2(rsi)+"  |  EMA20/50: "+(ema20>ema50?"صعودی":"نزولی")+"\nMACD: "+(m>0?"مثبت":"منفی")+"  |  Volume: "+(volNow>volAvg*1.15?"افزایش":"عادی")+"\nData Quality: داده زنده کندل\nقاعده‌مند؛ بدون داده تصادفی.";
         return new Signal(s,reason);
     }
     double ema(double[] x,int p){double e=x[0],k=2.0/(p+1);for(int i=1;i<x.length;i++)e=x[i]*k+e*(1-k);return e;}
     double rsi(double[] x,int p){double g=0,l=0;for(int i=Math.max(1,x.length-p);i<x.length;i++){double d=x[i]-x[i-1];if(d>=0)g+=d;else l-=d;}if(l==0)return 100;return 100-(100/(1+g/l));}
     double macd(double[] x){return ema(x,12)-ema(x,26);}
     void signals(){
-        content.removeAllViews();content.addView(tv("WAL Signals",27));content.addView(tv("Only deterministic signals from live candle data. No fabricated confidence.",12));
+        content.removeAllViews();content.addView(tv("WAL Signals",27));content.addView(tv("فقط تحلیل قاعده‌مند از کندل زنده؛ بدون اعتمادسازی ساختگی.",12));
         if(tickers==null){content.addView(tv("INSUFFICIENT DATA",15));return;}
         int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(!s.endsWith("USDT"))continue;assetSignalCard(s);shown++;}catch(Exception ignored){}
     }
     void assetSignalCard(String s){
-        TextView x=tv(s.replace("USDT","")+"  •  analyzing...",15);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(58)));
-        new Thread(()->{try{JSONArray a=getJson("https://api.binance.com/api/v3/klines?symbol="+s+"&interval=1h&limit=80");ArrayList<Candle> c=new ArrayList<>();for(int i=0;i<a.length();i++){JSONArray z=a.getJSONArray(i);c.add(new Candle(z.getDouble(1),z.getDouble(2),z.getDouble(3),z.getDouble(4),z.getDouble(5),z.getLong(0)));}Signal q=analyze(c);runOnUiThread(()->{x.setText(s.replace("USDT","")+"   •   "+q.name+"   •   Evidence "+q.text.split("Evidence Strength: ")[1].split("/")[0]+"/100");x.setTextColor(q.name.equals("BUY")?green:q.name.equals("SELL")?red:ink);x.setOnClickListener(v->asset(s));});}catch(Exception e){runOnUiThread(()->x.setText(s+"  •  INSUFFICIENT DATA"));}}).start();
+        TextView x=tv(s.replace("USDT","")+"  •  در حال تحلیل...",15);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(58)));
+        new Thread(()->{try{JSONArray a=getJson("https://api.binance.com/api/v3/klines?symbol="+s+"&interval=1h&limit=80");ArrayList<Candle> c=new ArrayList<>();for(int i=0;i<a.length();i++){JSONArray z=a.getJSONArray(i);c.add(new Candle(z.getDouble(1),z.getDouble(2),z.getDouble(3),z.getDouble(4),z.getDouble(5),z.getLong(0)));}Signal q=analyze(c);runOnUiThread(()->{x.setText(s.replace("USDT","")+"   •   "+q.name+"   •   Evidence "+q.text.split("قدرت شواهد: ")[1].split("/")[0]+"/100");x.setTextColor(q.name.equals("BUY")?green:q.name.equals("SELL")?red:ink);x.setOnClickListener(v->asset(s));});}catch(Exception e){runOnUiThread(()->x.setText(s+"  •  INSUFFICIENT DATA"));}}).start();
     }
 
     Handler whaleHandler = new Handler(Looper.getMainLooper());
@@ -130,15 +130,15 @@ public class MainActivity extends Activity {
     void radar(){
         radarVisible=true;
         content.removeAllViews();
-        TextView back=tv("‹  BACK",13);back.setOnClickListener(v->{radarVisible=false;home();});content.addView(back);
+        TextView back=tv("‹  بازگشت",13);back.setOnClickListener(v->{radarVisible=false;home();});content.addView(back);
         content.addView(tv("WAL Whale Radar",27));
-        content.addView(tv("HyperEVM on-chain data • live activity refresh every 30 seconds",12));
-        content.addView(tv("Whale candidate list refreshes every 24 hours. Entry/activity times are shown only when supplied by the blockchain indexer.",11));
-        whaleStatus=tv("Connecting to HypurrTrace...",13);content.addView(whaleStatus);
-        whaleRefreshLabel=tv("Whale list: checking last refresh...",10);content.addView(whaleRefreshLabel);
-        content.addView(tv("LATEST WHALE MOVEMENTS",16));
+        content.addView(tv("داده آن‌چین HyperEVM • فعالیت زنده هر ۳۰ ثانیه تازه می‌شود",12));
+        content.addView(tv("فهرست نامزدها هر ۲۴ ساعت تازه می‌شود. زمان ورود/فعالیت فقط وقتی نمایش داده می‌شود که ایندکسر بلاک‌چین ارائه کند.",11));
+        whaleStatus=tv("در حال اتصال به منبع داده نهنگ...",13);content.addView(whaleStatus);
+        whaleRefreshLabel=tv("فهرست نهنگ‌ها: بررسی آخرین به‌روزرسانی...",10);content.addView(whaleRefreshLabel);
+        content.addView(tv("آخرین جابه‌جایی‌های نهنگ",16));
         whaleListContainer=new LinearLayout(this);whaleListContainer.setOrientation(LinearLayout.VERTICAL);content.addView(whaleListContainer);
-        content.addView(tv("WHALE CANDIDATES (NOT YET VERIFIED)",16));
+        content.addView(tv("نامزدهای نهنگ (تأییدنشده)",16));
         LinearLayout candidates=new LinearLayout(this);candidates.setOrientation(LinearLayout.VERTICAL);content.addView(candidates);
         loadWhaleListIfDue(candidates);
         refreshWhaleMovements(whaleListContainer);
@@ -157,7 +157,7 @@ public class MainActivity extends Activity {
             if(!cached.isEmpty()&&target.getChildCount()==0)try{renderWhaleCandidates(target,new JSONObject(cached));}catch(Exception ignored){}
             return;
         }
-        if(whaleStatus!=null)whaleStatus.setText("Refreshing 24-hour whale candidate list...");
+        if(whaleStatus!=null)whaleStatus.setText("در حال تازه‌سازی فهرست نهنگ‌ها...");
         new Thread(()->{
             try{
                 Object raw=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
@@ -167,9 +167,9 @@ public class MainActivity extends Activity {
                     if(!radarVisible)return;
                     target.removeAllViews();renderWhaleCandidates(target,raw);
                     whaleRefreshLabel.setText("Whale list refreshed: "+dateTime(System.currentTimeMillis())+" • refresh interval 24h");
-                    whaleStatus.setText("LIVE • HypurrTrace indexed wealth list");
+                    whaleStatus.setText("زنده • فهرست دارایی‌های ثبت‌شده در HypurrTrace");
                 });
-            }catch(Exception e){runOnUiThread(()->{if(radarVisible){whaleStatus.setText("INSUFFICIENT DATA — whale list provider unavailable");whaleRefreshLabel.setText("List refresh failed; last cached list retained when available.");}});}
+            }catch(Exception e){runOnUiThread(()->{if(radarVisible){whaleStatus.setText("داده ناکافی — whale list provider unavailable");whaleRefreshLabel.setText("به‌روزرسانی ناموفق بود؛ در صورت وجود فهرست ذخیره‌شده حفظ می‌شود.");}});}
         }).start();
     }
 
@@ -183,7 +183,7 @@ public class MainActivity extends Activity {
                     renderWhaleMovements(target,raw);
                     if(whaleStatus!=null)whaleStatus.setText("LIVE • latest indexed on-chain movements • checked "+dateTime(System.currentTimeMillis()));
                 });
-            }catch(Exception e){runOnUiThread(()->{if(radarVisible&&target!=null&&target.getChildCount()==0)target.addView(tv("INSUFFICIENT DATA — live whale movements unavailable",13));});}
+            }catch(Exception e){runOnUiThread(()->{if(radarVisible&&target!=null&&target.getChildCount()==0)target.addView(tv("داده ناکافی — live whale movements unavailable",13));});}
         }).start();
     }
 
@@ -200,7 +200,7 @@ public class MainActivity extends Activity {
 
     void renderWhaleCandidates(LinearLayout target,Object raw){
         JSONArray a=extractList(raw);
-        if(a==null){target.addView(tv("Provider response was not a recognized list → INSUFFICIENT DATA",13));return;}
+        if(a==null){target.addView(tv("ساختار پاسخ منبع قابل‌شناسایی نبود → داده ناکافی",13));return;}
         int count=0;
         for(int i=0;i<a.length()&&count<100;i++)try{
             JSONObject o=a.getJSONObject(i);
@@ -210,17 +210,17 @@ public class MainActivity extends Activity {
             String label=find(o,"label","name","entity");
             String seen=getSharedPreferences("wal_whales",MODE_PRIVATE).getString("seen_"+addr.toLowerCase(Locale.US),"");
             if(seen.isEmpty()){seen=dateTime(System.currentTimeMillis());getSharedPreferences("wal_whales",MODE_PRIVATE).edit().putString("seen_"+addr.toLowerCase(Locale.US),seen).apply();}
-            TextView x=tv((count+1)+". "+shortAddr(addr)+"\nValue: $"+(val.isEmpty()?"—":val)+"  •  First observed by WAL: "+seen+"\n"+(label.isEmpty()?"Classification: UNVERIFIED CANDIDATE":label+" • UNVERIFIED"),12);
+            TextView x=tv((count+1)+". "+shortAddr(addr)+"\nValue: $"+(val.isEmpty()?"—":val)+"  •  اولین مشاهده توسط وال: "+seen+"\n"+(label.isEmpty()?"طبقه‌بندی: نامزد تأییدنشده":label+" • UNVERIFIED"),12);
             x.setBackground(box(Color.WHITE,12));target.addView(x,new LinearLayout.LayoutParams(-1,-2));
             Space sp=new Space(this);target.addView(sp,new LinearLayout.LayoutParams(1,d(5)));count++;
         }catch(Exception ignored){}
-        if(count==0)target.addView(tv("No parseable wallet records → INSUFFICIENT DATA",13));
-        else target.addView(tv("Candidate records: "+count+" • Verified independent whales: 0 until wallet classification is completed. First observed is WAL observation time, not a claimed historical buy time.",11));
+        if(count==0)target.addView(tv("رکورد کیف پول قابل‌خواندن نیست → داده ناکافی",13));
+        else target.addView(tv("تعداد نامزدها: "+count+" • نهنگ مستقل تأییدشده: تا پایان طبقه‌بندی صفر. اولین مشاهده، زمان مشاهده وال است نه زمان خرید تاریخی.",11));
     }
 
     void renderWhaleMovements(LinearLayout target,Object raw){
         JSONArray a=extractList(raw);
-        if(a==null){target.addView(tv("No parseable live movement feed → INSUFFICIENT DATA",13));return;}
+        if(a==null){target.addView(tv("فید جابه‌جایی زنده قابل‌خواندن نیست → داده ناکافی",13));return;}
         int count=0;
         for(int i=0;i<a.length()&&count<30;i++)try{
             JSONObject o=a.getJSONObject(i);
@@ -234,21 +234,21 @@ public class MainActivity extends Activity {
             if(from.isEmpty()&&to.isEmpty()&&tx.isEmpty())continue;
             String when=formatChainTime(stamp);
             StringBuilder line=new StringBuilder();
-            line.append("On-chain event: ").append(when).append("\n");
-            if(!from.isEmpty())line.append("From: ").append(shortAddr(from)).append("\n");
-            if(!to.isEmpty())line.append("To: ").append(shortAddr(to)).append("\n");
-            line.append("Asset: ").append(token.isEmpty()?"—":token).append(" • Amount: ").append(amount.isEmpty()?"—":amount);
+            line.append("رویداد آن‌چین: ").append(when).append("\n");
+            if(!from.isEmpty())line.append("مبدأ: ").append(shortAddr(from)).append("\n");
+            if(!to.isEmpty())line.append("مقصد: ").append(shortAddr(to)).append("\n");
+            line.append("ارز: ").append(token.isEmpty()?"—":token).append(" • مقدار: ").append(amount.isEmpty()?"—":amount);
             if(!usd.isEmpty())line.append(" • USD: $").append(usd);
             if(!tx.isEmpty())line.append("\nTx: ").append(shortAddr(tx));
             TextView x=tv(line.toString(),11);x.setBackground(box(Color.WHITE,12));target.addView(x,new LinearLayout.LayoutParams(-1,-2));
             Space sp=new Space(this);target.addView(sp,new LinearLayout.LayoutParams(1,d(5)));count++;
         }catch(Exception ignored){}
-        if(count==0)target.addView(tv("Provider returned no parseable transfer events. No entry time can be confirmed from this response.",12));
-        else target.addView(tv("Showing "+count+" recent indexed events. These timestamps are on-chain event times when provided by the source; a transfer alone does not prove a wallet opened a position or bought an asset.",10));
+        if(count==0)target.addView(tv("منبع انتقال قابل‌خواندن برنگرداند. از این پاسخ نمی‌توان زمان ورود را تأیید کرد.",12));
+        else target.addView(tv("نمایش "+count+" رویداد ثبت‌شده اخیر. زمان‌ها فقط در صورت ارائه منبع، زمان رویداد آن‌چین هستند؛ انتقال به‌تنهایی خرید را ثابت نمی‌کند.",10));
     }
 
     String formatChainTime(String raw){
-        if(raw==null||raw.trim().isEmpty())return "timestamp unavailable";
+        if(raw==null||raw.trim().isEmpty())return "زمان ثبت نشده";
         try{
             String s=raw.trim();
             if(s.matches("\\d{10,13}")){
@@ -258,13 +258,13 @@ public class MainActivity extends Activity {
             return s+" (source timestamp)";
         }catch(Exception e){return raw;}
     }
-    String dateTime(long ms){if(ms<=0)return "not recorded";return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date(ms));}
+    String dateTime(long ms){if(ms<=0)return "ثبت نشده";return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date(ms));}
 
     void intel(){
-        content.removeAllViews();content.addView(tv("WAL Intelligence",27));content.addView(tv("Provider health and evidence policy",13));
-        String[] rows={"Binance Market/Candles — LIVE","Technical Engine — LOCAL / DETERMINISTIC","HyperEVM HypurrTrace — LIVE WHEN AVAILABLE","Exchange/LP/contract filtering — CONSERVATIVE","Unknown wallet classification — UNVERIFIED","Offline mode — LAST KNOWN DATA ONLY","Fake/random/mock values — DISABLED"};
+        content.removeAllViews();content.addView(tv("هوش وال",27));content.addView(tv("وضعیت منابع داده و سیاست شواهد",13));
+        String[] rows={"بازار/کندل بایننس — زنده","موتور تکنیکال — محلی و قاعده‌مند","HypurrTrace HyperEVM — در صورت دسترس‌پذیری زنده","فیلتر صرافی/استخر/قرارداد — محافظه‌کارانه","طبقه‌بندی کیف پول ناشناخته — تأییدنشده","حالت آفلاین — فقط آخرین داده ذخیره‌شده","داده جعلی/تصادفی — غیرفعال"};
         for(String r:rows){TextView x=tv("●  "+r,13);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(52)));Space s=new Space(this);content.addView(s,new LinearLayout.LayoutParams(1,d(5)));}
-        content.addView(tv("Important: complete multi-chain top-100 holder census requires indexed providers for each network/token. WAL reports INSUFFICIENT DATA rather than pretending coverage exists.",11));
+        content.addView(tv("مهم: بررسی ۱۰۰ دارنده برتر هر ارز در چند زنجیره به منبع ایندکس‌شده برای هر شبکه/ارز نیاز دارد. وال به‌جای ادعای پوشش غیرواقعی، داده ناکافی را اعلام می‌کند.",11));
     }
 
     Object getJsonAny(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("Accept","application/json");int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);if(code<200||code>=300)throw new IOException("HTTP "+code);String body=s.toString().trim();if(body.startsWith("["))return new JSONArray(body);return new JSONObject(body);}
