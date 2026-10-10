@@ -119,33 +119,146 @@ public class MainActivity extends Activity {
         new Thread(()->{try{JSONArray a=getJson("https://api.binance.com/api/v3/klines?symbol="+s+"&interval=1h&limit=80");ArrayList<Candle> c=new ArrayList<>();for(int i=0;i<a.length();i++){JSONArray z=a.getJSONArray(i);c.add(new Candle(z.getDouble(1),z.getDouble(2),z.getDouble(3),z.getDouble(4),z.getDouble(5),z.getLong(0)));}Signal q=analyze(c);runOnUiThread(()->{x.setText(s.replace("USDT","")+"   •   "+q.name+"   •   Evidence "+q.text.split("Evidence Strength: ")[1].split("/")[0]+"/100");x.setTextColor(q.name.equals("BUY")?green:q.name.equals("SELL")?red:ink);x.setOnClickListener(v->asset(s));});}catch(Exception e){runOnUiThread(()->x.setText(s+"  •  INSUFFICIENT DATA"));}}).start();
     }
 
+    Handler whaleHandler = new Handler(Looper.getMainLooper());
+    LinearLayout whaleListContainer;
+    TextView whaleStatus, whaleRefreshLabel;
+    boolean radarVisible=false;
+    Runnable whaleLiveTask;
+    static final long WHALE_LIST_REFRESH_MS=24L*60L*60L*1000L;
+    static final long WHALE_LIVE_REFRESH_MS=30L*1000L;
+
     void radar(){
-        content.removeAllViews();content.addView(tv("WAL Whale Radar",27));content.addView(tv("REAL HyperEVM indexed data • system/bot classification remains conservative",12));
-        content.addView(tv("Rule: WAL never labels an unknown wallet as a verified independent whale.",11));
-        TextView st=tv("Loading real whale data...",14);content.addView(st);
+        radarVisible=true;
+        content.removeAllViews();
+        TextView back=tv("‹  BACK",13);back.setOnClickListener(v->{radarVisible=false;home();});content.addView(back);
+        content.addView(tv("WAL Whale Radar",27));
+        content.addView(tv("HyperEVM on-chain data • live activity refresh every 30 seconds",12));
+        content.addView(tv("Whale candidate list refreshes every 24 hours. Entry/activity times are shown only when supplied by the blockchain indexer.",11));
+        whaleStatus=tv("Connecting to HypurrTrace...",13);content.addView(whaleStatus);
+        whaleRefreshLabel=tv("Whale list: checking last refresh...",10);content.addView(whaleRefreshLabel);
+        content.addView(tv("LATEST WHALE MOVEMENTS",16));
+        whaleListContainer=new LinearLayout(this);whaleListContainer.setOrientation(LinearLayout.VERTICAL);content.addView(whaleListContainer);
+        content.addView(tv("WHALE CANDIDATES (NOT YET VERIFIED)",16));
+        LinearLayout candidates=new LinearLayout(this);candidates.setOrientation(LinearLayout.VERTICAL);content.addView(candidates);
+        loadWhaleListIfDue(candidates);
+        refreshWhaleMovements(whaleListContainer);
+        if(whaleLiveTask!=null)whaleHandler.removeCallbacks(whaleLiveTask);
+        whaleLiveTask=()->{if(radarVisible){refreshWhaleMovements(whaleListContainer);loadWhaleListIfDue(candidates);whaleHandler.postDelayed(whaleLiveTask,WHALE_LIVE_REFRESH_MS);}};
+        whaleHandler.postDelayed(whaleLiveTask,WHALE_LIVE_REFRESH_MS);
+    }
+
+    void loadWhaleListIfDue(LinearLayout target){
+        android.content.SharedPreferences p=getSharedPreferences("wal_whales",MODE_PRIVATE);
+        long last=p.getLong("list_refresh_ms",0L);
+        long now=System.currentTimeMillis();
+        if(now-last<WHALE_LIST_REFRESH_MS){
+            whaleRefreshLabel.setText("Whale list updated: "+dateTime(last)+" • next refresh within 24h");
+            String cached=p.getString("rich_list_json","");
+            if(!cached.isEmpty()&&target.getChildCount()==0)try{renderWhaleCandidates(target,new JSONObject(cached));}catch(Exception ignored){}
+            return;
+        }
+        if(whaleStatus!=null)whaleStatus.setText("Refreshing 24-hour whale candidate list...");
         new Thread(()->{
             try{
-                Object candidates=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
-                runOnUiThread(()->{st.setText("LIVE • HypurrTrace wealth rich list");renderGeneric((View)st.getParent(),candidates);});
-            }catch(Exception e){runOnUiThread(()->st.setText("INSUFFICIENT DATA — HypurrTrace unavailable"));}}
-        ).start();
+                Object raw=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/wealth-rich-list");
+                String json=raw.toString();
+                p.edit().putString("rich_list_json",json).putLong("list_refresh_ms",System.currentTimeMillis()).apply();
+                runOnUiThread(()->{
+                    if(!radarVisible)return;
+                    target.removeAllViews();renderWhaleCandidates(target,raw);
+                    whaleRefreshLabel.setText("Whale list refreshed: "+dateTime(System.currentTimeMillis())+" • refresh interval 24h");
+                    whaleStatus.setText("LIVE • HypurrTrace indexed wealth list");
+                });
+            }catch(Exception e){runOnUiThread(()->{if(radarVisible){whaleStatus.setText("INSUFFICIENT DATA — whale list provider unavailable");whaleRefreshLabel.setText("List refresh failed; last cached list retained when available.");}});}
+        }).start();
     }
 
-    void renderGeneric(View parent,Object raw){
-        LinearLayout container=(LinearLayout)parent;JSONArray a=raw instanceof JSONArray?(JSONArray)raw:null;
-        if(a==null && raw instanceof JSONObject){JSONObject o=(JSONObject)raw;a=o.optJSONArray("items");if(a==null)a=o.optJSONArray("results");if(a==null)a=o.optJSONArray("data");}
-        if(a==null){container.addView(tv("Provider returned a non-list response → INSUFFICIENT DATA",13));return;} int count=0;
+    void refreshWhaleMovements(LinearLayout target){
+        new Thread(()->{
+            try{
+                Object raw=getJsonAny("https://trace.hypurrscan.io/api/v1/indexed/whale-transfers");
+                runOnUiThread(()->{
+                    if(!radarVisible||target==null)return;
+                    target.removeAllViews();
+                    renderWhaleMovements(target,raw);
+                    if(whaleStatus!=null)whaleStatus.setText("LIVE • latest indexed on-chain movements • checked "+dateTime(System.currentTimeMillis()));
+                });
+            }catch(Exception e){runOnUiThread(()->{if(radarVisible&&target!=null&&target.getChildCount()==0)target.addView(tv("INSUFFICIENT DATA — live whale movements unavailable",13));});}
+        }).start();
+    }
+
+    JSONArray extractList(Object raw){
+        if(raw instanceof JSONArray)return (JSONArray)raw;
+        if(raw instanceof JSONObject){
+            JSONObject o=(JSONObject)raw;
+            String[] keys={"items","results","data","transfers","transactions","rows","whales"};
+            for(String k:keys){JSONArray a=o.optJSONArray(k);if(a!=null)return a;}
+            for(String k:keys){JSONObject nested=o.optJSONObject(k);if(nested!=null){JSONArray a=extractList(nested);if(a!=null)return a;}}
+        }
+        return null;
+    }
+
+    void renderWhaleCandidates(LinearLayout target,Object raw){
+        JSONArray a=extractList(raw);
+        if(a==null){target.addView(tv("Provider response was not a recognized list → INSUFFICIENT DATA",13));return;}
+        int count=0;
         for(int i=0;i<a.length()&&count<100;i++)try{
-            JSONObject o=a.getJSONObject(i);String addr=find(o,"address","user","owner");if(addr.isEmpty())continue;
-            String val=find(o,"usdValue","valueUsd","totalUsd","accountValue");String label=find(o,"label","name");
-            TextView x=tv((count+1)+". "+shortAddr(addr)+"    $"+(val.isEmpty()?"—":val)+(label.isEmpty()?"":"   "+label),12);x.setBackground(MainActivity.this.box(Color.WHITE,10));container.addView(x);count++;
+            JSONObject o=a.getJSONObject(i);
+            String addr=find(o,"address","user","owner","account","wallet");
+            if(addr.isEmpty())continue;
+            String val=find(o,"usdValue","valueUsd","totalUsd","accountValue","usd_value");
+            String label=find(o,"label","name","entity");
+            String seen=getSharedPreferences("wal_whales",MODE_PRIVATE).getString("seen_"+addr.toLowerCase(Locale.US),"");
+            if(seen.isEmpty()){seen=dateTime(System.currentTimeMillis());getSharedPreferences("wal_whales",MODE_PRIVATE).edit().putString("seen_"+addr.toLowerCase(Locale.US),seen).apply();}
+            TextView x=tv((count+1)+". "+shortAddr(addr)+"\nValue: $"+(val.isEmpty()?"—":val)+"  •  First observed by WAL: "+seen+"\n"+(label.isEmpty()?"Classification: UNVERIFIED CANDIDATE":label+" • UNVERIFIED"),12);
+            x.setBackground(box(Color.WHITE,12));target.addView(x,new LinearLayout.LayoutParams(-1,-2));
+            Space sp=new Space(this);target.addView(sp,new LinearLayout.LayoutParams(1,d(5)));count++;
         }catch(Exception ignored){}
-        if(count==0)container.addView(tv("Provider returned no parseable whale records → INSUFFICIENT DATA",13));
-        else container.addView(tv("Verified independent whales: 0 until each address passes classification. Candidate records: "+count,11));
+        if(count==0)target.addView(tv("No parseable wallet records → INSUFFICIENT DATA",13));
+        else target.addView(tv("Candidate records: "+count+" • Verified independent whales: 0 until wallet classification is completed. First observed is WAL observation time, not a claimed historical buy time.",11));
     }
 
-    String find(JSONObject o,String...keys){for(String k:keys)if(o.has(k)&&!o.optString(k).isEmpty())return o.optString(k);for(int i=0;i<o.names().length();i++){String k=o.names().optString(i);Object v=o.opt(k);if(v instanceof JSONObject){String r=find((JSONObject)v,keys);if(!r.isEmpty())return r;} }return "";}
+    void renderWhaleMovements(LinearLayout target,Object raw){
+        JSONArray a=extractList(raw);
+        if(a==null){target.addView(tv("No parseable live movement feed → INSUFFICIENT DATA",13));return;}
+        int count=0;
+        for(int i=0;i<a.length()&&count<30;i++)try{
+            JSONObject o=a.getJSONObject(i);
+            String from=find(o,"from","fromAddress","sender","src","owner");
+            String to=find(o,"to","toAddress","recipient","dst","user","address");
+            String token=find(o,"tokenSymbol","symbol","token","asset","name");
+            String amount=find(o,"amount","value","tokenAmount","quantity");
+            String usd=find(o,"usdValue","valueUsd","amountUsd","usd_value","transferUsd");
+            String tx=find(o,"txHash","transactionHash","hash","transaction_hash");
+            String stamp=find(o,"timestamp","blockTimestamp","timeStamp","createdAt","datetime","time","block_time","ts");
+            if(from.isEmpty()&&to.isEmpty()&&tx.isEmpty())continue;
+            String when=formatChainTime(stamp);
+            StringBuilder line=new StringBuilder();
+            line.append("On-chain event: ").append(when).append("\n");
+            if(!from.isEmpty())line.append("From: ").append(shortAddr(from)).append("\n");
+            if(!to.isEmpty())line.append("To: ").append(shortAddr(to)).append("\n");
+            line.append("Asset: ").append(token.isEmpty()?"—":token).append(" • Amount: ").append(amount.isEmpty()?"—":amount);
+            if(!usd.isEmpty())line.append(" • USD: $").append(usd);
+            if(!tx.isEmpty())line.append("\nTx: ").append(shortAddr(tx));
+            TextView x=tv(line.toString(),11);x.setBackground(box(Color.WHITE,12));target.addView(x,new LinearLayout.LayoutParams(-1,-2));
+            Space sp=new Space(this);target.addView(sp,new LinearLayout.LayoutParams(1,d(5)));count++;
+        }catch(Exception ignored){}
+        if(count==0)target.addView(tv("Provider returned no parseable transfer events. No entry time can be confirmed from this response.",12));
+        else target.addView(tv("Showing "+count+" recent indexed events. These timestamps are on-chain event times when provided by the source; a transfer alone does not prove a wallet opened a position or bought an asset.",10));
+    }
 
+    String formatChainTime(String raw){
+        if(raw==null||raw.trim().isEmpty())return "timestamp unavailable";
+        try{
+            String s=raw.trim();
+            if(s.matches("\\d{10,13}")){
+                long t=Long.parseLong(s);if(s.length()==10)t*=1000L;
+                return dateTime(t)+" (chain/indexer time)";
+            }
+            return s+" (source timestamp)";
+        }catch(Exception e){return raw;}
+    }
+    String dateTime(long ms){if(ms<=0)return "not recorded";return new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date(ms));}
 
     void intel(){
         content.removeAllViews();content.addView(tv("WAL Intelligence",27));content.addView(tv("Provider health and evidence policy",13));
