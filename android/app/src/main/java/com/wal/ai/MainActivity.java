@@ -273,6 +273,7 @@ public class MainActivity extends Activity {
     String fmt(double x){if(x>=1000)return String.format(Locale.US,"%,.2f",x);if(x>=1)return String.format(Locale.US,"%.4f",x);if(x>=.01)return String.format(Locale.US,"%.5f",x);return String.format(Locale.US,"%.8f",x);}
     String fmt2(double x){return String.format(Locale.US,"%.2f",x);}
     String shortNum(double x){if(x>=1e9)return String.format(Locale.US,"%.2fB",x/1e9);if(x>=1e6)return String.format(Locale.US,"%.2fM",x/1e6);if(x>=1e3)return String.format(Locale.US,"%.2fK",x/1e3);return String.format(Locale.US,"%.0f",x);}
+    String find(JSONObject o,String... keys){for(String k:keys){Object v=o.opt(k);if(v!=null&&v!=JSONObject.NULL){String s=String.valueOf(v).trim();if(!s.isEmpty()&&!s.equals("null"))return s;}}return "";}
     String shortAddr(String a){return a.length()>18?a.substring(0,10)+"…"+a.substring(a.length()-6):a;}
 
     static class Candle{double o,h,l,c,v;long t;Candle(double O,double H,double L,double C,double V,long T){o=O;h=H;l=L;c=C;v=V;t=T;}}
