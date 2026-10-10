@@ -56,13 +56,13 @@ public class MainActivity extends Activity {
         list.removeAllViews();String q=query.toUpperCase(Locale.US);int n=0;
         for(int i=0;i<tickers.length()&&n<80;i++)try{
             JSONObject o=tickers.getJSONObject(i);String s=o.optString("symbol");
-            if(!s.endsWith("USDT")||(!q.isEmpty()&&!s.contains(q)))continue;
+            if(s.isEmpty()||(!q.isEmpty()&&!s.contains(q)))continue;
             double p=o.optDouble("lastPrice"), ch=o.optDouble("priceChangePercent"), vol=o.optDouble("quoteVolume");
             LinearLayout c=new LinearLayout(this);c.setOrientation(LinearLayout.VERTICAL);c.setPadding(d(10),d(9),d(10),d(9));c.setBackground(box(Color.WHITE,14));
             TextView a=tv(s.replace("USDT","")+"    $"+fmt(p),17);a.setTypeface(null,1);c.addView(a);
             TextView x=tv("24h  "+fmt2(ch)+"%    •    Vol $"+shortNum(vol),12);x.setTextColor(ch>=0?green:red);c.addView(x);
             c.addView(tv("بازار زنده • برای نمودار و سیگنال لمس کن",10));
-            c.setOnClickListener(v->asset(s));
+            c.setOnClickListener(v->asset(s+"USDT"));
             list.addView(c,new LinearLayout.LayoutParams(-1,d(86)));Space sp=new Space(this);list.addView(sp,new LinearLayout.LayoutParams(1,d(7)));n++;
         }catch(Exception ignored){}
     }
@@ -106,7 +106,7 @@ public class MainActivity extends Activity {
     void signals(){
         content.removeAllViews();content.addView(tv("سیگنال‌های وال",27));content.addView(tv("فقط تحلیل قاعده‌مند از کندل زنده؛ بدون اعتمادسازی ساختگی.",12));
         if(tickers==null){content.addView(tv("INSUFFICIENT DATA",15));return;}
-        int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(!s.endsWith("USDT"))continue;assetSignalCard(s);shown++;}catch(Exception ignored){}
+        int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(s.isEmpty())continue;assetSignalCard(s+"USDT");shown++;}catch(Exception ignored){}
     }
     void assetSignalCard(String s){
         JSONObject item=findMarketItem(s);if(item==null)return;Signal q=analyzeMarketItem(item);
