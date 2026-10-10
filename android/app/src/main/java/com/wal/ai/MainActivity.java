@@ -81,21 +81,15 @@ public class MainActivity extends Activity {
 
     void loadChart(String symbol,String interval,TextView price){loadChart(symbol,interval,price,null,null);}
     void loadChart(String symbol,String interval,TextView price,ChartView chart,TextView sig){
-        new Thread(()->{
-            try{
-                String u="https://api.binance.com/api/v3/klines?symbol="+symbol+"&interval="+interval+"&limit=120";
-                JSONArray a=getJson(u);ArrayList<Candle> cs=new ArrayList<>();
-                for(int i=0;i<a.length();i++){JSONArray x=a.getJSONArray(i);cs.add(new Candle(x.getDouble(1),x.getDouble(2),x.getDouble(3),x.getDouble(4),x.getDouble(5),x.getLong(0)));}
-                Signal s=analyze(cs);
-                double last=cs.get(cs.size()-1).c;
-                runOnUiThread(()->{
-                    price.setText("$"+fmt(last)+"    "+interval+"    LIVE");
-                    if(chart!=null)chart.setData(cs);
-                    if(sig!=null)sig.setText(s.text);
-                });
-            }catch(Exception e){runOnUiThread(()->price.setText("داده ناکافی — "+e.getClass().getSimpleName()));}
-        }).start();
+        new Thread(()->{try{
+            JSONObject item=findMarketItem(symbol);if(item==null)throw new IOException("دارایی در فهرست CoinMarketCap نیست");
+            double last=item.optDouble("lastPrice"),change=item.optDouble("priceChangePercent");
+            Signal signal=analyzeMarketItem(item);
+            runOnUiThread(()->{price.setText("$"+fmt(last)+"    تغییر ۲۴ساعته CMC: "+fmt2(change)+"% ");if(chart!=null)chart.setData(new ArrayList<>());if(sig!=null)sig.setText(signal.text+"\nنمودار کندلی تاریخی از فید CoinMarketCap فعلی دریافت نشده است.");});
+        }catch(Exception e){runOnUiThread(()->price.setText("داده CoinMarketCap در دسترس نیست — "+e.getMessage()));}}).start();
     }
+    JSONObject findMarketItem(String symbol){if(tickers==null)return null;String base=symbol.replace("USDT","");for(int i=0;i<tickers.length();i++){JSONObject o=tickers.optJSONObject(i);if(o!=null&&o.optString("symbol").equals(base))return o;}return null;}
+    Signal analyzeMarketItem(JSONObject o){double ch=o.optDouble("priceChangePercent"),cap=o.optDouble("marketCap"),vol=o.optDouble("quoteVolume");String name=ch>=3?"BUY WATCH":ch<=-3?"SELL RISK":"WAIT";String text="سیگنال: "+name+"\\nتغییر ۲۴ساعته CoinMarketCap: "+fmt2(ch)+"%\\nارزش بازار: $"+shortNum(cap)+"\\nحجم ۲۴ساعته: $"+shortNum(vol)+"\\nاین فیلتر سادهٔ تغییر روزانه است، نه پیش‌بینی قطعی یا تحلیل کندلی.";return new Signal(name,text);}
 
     Signal analyze(ArrayList<Candle> c){
         int n=c.size();double[] closes=new double[n];for(int i=0;i<n;i++)closes[i]=c.get(i).c;
@@ -115,8 +109,8 @@ public class MainActivity extends Activity {
         int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(!s.endsWith("USDT"))continue;assetSignalCard(s);shown++;}catch(Exception ignored){}
     }
     void assetSignalCard(String s){
-        TextView x=tv(s.replace("USDT","")+"  •  در حال تحلیل...",15);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(58)));
-        new Thread(()->{try{JSONArray a=getJson("https://api.binance.com/api/v3/klines?symbol="+s+"&interval=1h&limit=80");ArrayList<Candle> c=new ArrayList<>();for(int i=0;i<a.length();i++){JSONArray z=a.getJSONArray(i);c.add(new Candle(z.getDouble(1),z.getDouble(2),z.getDouble(3),z.getDouble(4),z.getDouble(5),z.getLong(0)));}Signal q=analyze(c);runOnUiThread(()->{x.setText(s.replace("USDT","")+"   •   "+q.name+"   •   Evidence "+q.text.split("قدرت شواهد: ")[1].split("/")[0]+"/100");x.setTextColor(q.name.equals("BUY")?green:q.name.equals("SELL")?red:ink);x.setOnClickListener(v->asset(s));});}catch(Exception e){runOnUiThread(()->x.setText(s+"  •  INSUFFICIENT DATA"));}}).start();
+        JSONObject item=findMarketItem(s);if(item==null)return;Signal q=analyzeMarketItem(item);
+        TextView x=tv(s.replace("USDT","")+"   •   "+q.name+"   •   "+fmt2(item.optDouble("priceChangePercent"))+"% / 24h",15);x.setBackground(box(Color.WHITE,12));x.setTextColor(q.name.startsWith("BUY")?green:q.name.startsWith("SELL")?red:ink);content.addView(x,new LinearLayout.LayoutParams(-1,d(58)));x.setOnClickListener(v->asset(s));
     }
 
     Handler whaleHandler = new Handler(Looper.getMainLooper());
@@ -262,7 +256,7 @@ public class MainActivity extends Activity {
 
     void intel(){
         content.removeAllViews();content.addView(tv("هوش وال",27));content.addView(tv("وضعیت منابع داده و سیاست شواهد",13));
-        String[] rows={"بازار/کندل بایننس — زنده","موتور تکنیکال — محلی و قاعده‌مند","HypurrTrace HyperEVM — در صورت دسترس‌پذیری زنده","فیلتر صرافی/استخر/قرارداد — محافظه‌کارانه","طبقه‌بندی کیف پول ناشناخته — تأییدنشده","حالت آفلاین — فقط آخرین داده ذخیره‌شده","داده جعلی/تصادفی — غیرفعال"};
+        String[] rows={"بازار CoinMarketCap — قیمت و تغییر ۲۴ساعته","موتور تکنیکال — محلی و قاعده‌مند","HypurrTrace HyperEVM — در صورت دسترس‌پذیری زنده","DeBank — نیازمند کلید API مجاز برای دادهٔ کیف پول","فیلتر صرافی/استخر/قرارداد — محافظه‌کارانه","طبقه‌بندی کیف پول ناشناخته — تأییدنشده","حالت آفلاین — فقط آخرین داده ذخیره‌شده","داده جعلی/تصادفی — غیرفعال"};
         for(String r:rows){TextView x=tv("●  "+r,13);x.setBackground(box(Color.WHITE,12));content.addView(x,new LinearLayout.LayoutParams(-1,d(52)));Space s=new Space(this);content.addView(s,new LinearLayout.LayoutParams(1,d(5)));}
         content.addView(tv("مهم: بررسی ۱۰۰ دارنده برتر هر ارز در چند زنجیره به منبع ایندکس‌شده برای هر شبکه/ارز نیاز دارد. وال به‌جای ادعای پوشش غیرواقعی، داده ناکافی را اعلام می‌کند.",11));
     }
@@ -270,21 +264,11 @@ public class MainActivity extends Activity {
     Object getJsonAny(String u)throws Exception{HttpURLConnection c=(HttpURLConnection)new URL(u).openConnection();c.setConnectTimeout(15000);c.setReadTimeout(15000);c.setRequestProperty("Accept","application/json");int code=c.getResponseCode();InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();BufferedReader r=new BufferedReader(new InputStreamReader(in));StringBuilder s=new StringBuilder();String z;while((z=r.readLine())!=null)s.append(z);if(code<200||code>=300)throw new IOException("HTTP "+code);String body=s.toString().trim();if(body.startsWith("["))return new JSONArray(body);return new JSONObject(body);}
     JSONArray getJson(String u)throws Exception{Object o=getJsonAny(u);if(o instanceof JSONArray)return (JSONArray)o;throw new IOException("Expected array");}
     void loadMarkets(){
-        status.setText("● در حال اتصال");status.setTextColor(blue);
-        new Thread(()->{
-            String[] hosts={"https://api.binance.com/api/v3/ticker/24hr","https://api1.binance.com/api/v3/ticker/24hr","https://api2.binance.com/api/v3/ticker/24hr","https://api3.binance.com/api/v3/ticker/24hr","https://data-api.binance.vision/api/v3/ticker/24hr"};
-            Exception last=null;JSONArray data=null;
-            for(String endpoint:hosts){try{data=getJson(endpoint);if(data!=null&&data.length()>0)break;}catch(Exception e){last=e;}}
-            final JSONArray found=data;final Exception failure=last;
-            runOnUiThread(()->{
-                if(found!=null&&found.length()>0){tickers=found;status.setText("● بازار زنده");status.setTextColor(green);home();}
-                else{status.setText("● اتصال ناموفق — لمس برای تلاش مجدد");status.setTextColor(red);status.setOnClickListener(v->loadMarkets());
-                    content.removeAllViews();content.addView(tv("اتصال به API بازار ناموفق بود.",18));
-                    content.addView(tv("این الزاماً به معنی قطع اینترنت گوشی نیست؛ ممکن است دسترسی به سرویس بازار مسدود یا موقتاً قطع باشد.",13));
-                    content.addView(tv("خطا: "+(failure==null?"پاسخ خالی":failure.getClass().getSimpleName()+": "+failure.getMessage()),11));
-                    Button retry=btn("تلاش دوباره");retry.setOnClickListener(v->loadMarkets());content.addView(retry,new LinearLayout.LayoutParams(-1,d(48)));
-                }
-            });
+        status.setText("● اتصال به CoinMarketCap...");status.setTextColor(blue);
+        new Thread(()->{Exception last=null;JSONArray converted=null;
+            String[] endpoints={"https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start=1&limit=500&convert=USD","https://pro-api.coinmarketcap.com/public-api/v1/cryptocurrency/listings/latest?start=1&limit=500&convert=USD"};
+            for(String endpoint:endpoints){try{Object raw=getJsonAny(endpoint);JSONArray rows=extractList(raw);if(rows==null||rows.length()==0)throw new IOException("پاسخ فهرست CMC خالی است");JSONArray out=new JSONArray();for(int i=0;i<rows.length();i++){JSONObject c=rows.optJSONObject(i);if(c==null)continue;JSONObject quote=c.optJSONObject("quote");if(quote==null)continue;JSONObject usd=quote.optJSONObject("USD");if(usd==null)usd=quote.optJSONObject("usd");if(usd==null)continue;JSONObject item=new JSONObject();item.put("symbol",c.optString("symbol"));item.put("name",c.optString("name"));item.put("lastPrice",usd.optDouble("price"));item.put("priceChangePercent",usd.optDouble("percent_change_24h"));item.put("quoteVolume",usd.optDouble("volume_24h"));item.put("marketCap",usd.optDouble("market_cap"));out.put(item);}if(out.length()>0){converted=out;break;}}catch(Exception e){last=e;}}
+            final JSONArray found=converted;final Exception failure=last;runOnUiThread(()->{if(found!=null&&found.length()>0){tickers=found;status.setText("● بازار زنده · CoinMarketCap");status.setTextColor(green);home();}else{status.setText("● اتصال به CMC ناموفق — لمس برای تلاش مجدد");status.setTextColor(red);status.setOnClickListener(v->loadMarkets());content.removeAllViews();content.addView(tv("دریافت داده از CoinMarketCap ناموفق بود.",18));content.addView(tv("این نسخه برای قیمت بازار از API صرافی استفاده نمی‌کند. فید عمومی CMC ممکن است از شبکهٔ فعلی قابل‌دسترسی نباشد.",13));content.addView(tv("خطا: "+(failure==null?"پاسخ خالی":failure.getClass().getSimpleName()+": "+failure.getMessage()),11));Button retry=btn("تلاش دوباره");retry.setOnClickListener(v->loadMarkets());content.addView(retry,new LinearLayout.LayoutParams(-1,d(48)));}});
         }).start();
     }
     String fmt(double x){if(x>=1000)return String.format(Locale.US,"%,.2f",x);if(x>=1)return String.format(Locale.US,"%.4f",x);if(x>=.01)return String.format(Locale.US,"%.5f",x);return String.format(Locale.US,"%.8f",x);}
