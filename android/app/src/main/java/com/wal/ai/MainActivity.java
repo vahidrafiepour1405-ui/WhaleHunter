@@ -191,7 +191,7 @@ public class MainActivity extends Activity {
         if(raw instanceof JSONArray)return (JSONArray)raw;
         if(raw instanceof JSONObject){
             JSONObject o=(JSONObject)raw;
-            String[] keys={"items","results","data","transfers","transactions","rows","whales"};
+            String[] keys={"items","results","data","transfers","transactions","rows","whales","records","balances","holders","richList","rich_list","wallets","entries","list"};
             for(String k:keys){JSONArray a=o.optJSONArray(k);if(a!=null)return a;}
             for(String k:keys){JSONObject nested=o.optJSONObject(k);if(nested!=null){JSONArray a=extractList(nested);if(a!=null)return a;}}
         }
@@ -204,9 +204,9 @@ public class MainActivity extends Activity {
         int count=0;
         for(int i=0;i<a.length()&&count<100;i++)try{
             JSONObject o=a.getJSONObject(i);
-            String addr=find(o,"address","user","owner","account","wallet");
+            String addr=find(o,"address","wallet_address","account_address","user","owner","account","wallet","holder");
             if(addr.isEmpty())continue;
-            String val=find(o,"usdValue","valueUsd","totalUsd","accountValue","usd_value");
+            String val=find(o,"usdValue","valueUsd","totalUsd","total_usd_value","accountValue","account_value","usd_value");
             String label=find(o,"label","name","entity");
             String seen=getSharedPreferences("wal_whales",MODE_PRIVATE).getString("seen_"+addr.toLowerCase(Locale.US),"");
             if(seen.isEmpty()){seen=dateTime(System.currentTimeMillis());getSharedPreferences("wal_whales",MODE_PRIVATE).edit().putString("seen_"+addr.toLowerCase(Locale.US),seen).apply();}
@@ -224,13 +224,13 @@ public class MainActivity extends Activity {
         int count=0;
         for(int i=0;i<a.length()&&count<30;i++)try{
             JSONObject o=a.getJSONObject(i);
-            String from=find(o,"from","fromAddress","sender","src","owner");
-            String to=find(o,"to","toAddress","recipient","dst","user","address");
-            String token=find(o,"tokenSymbol","symbol","token","asset","name");
-            String amount=find(o,"amount","value","tokenAmount","quantity");
-            String usd=find(o,"usdValue","valueUsd","amountUsd","usd_value","transferUsd");
-            String tx=find(o,"txHash","transactionHash","hash","transaction_hash");
-            String stamp=find(o,"timestamp","blockTimestamp","timeStamp","createdAt","datetime","time","block_time","ts");
+            String from=find(o,"from","fromAddress","from_address","sender","sender_address","src","owner");
+            String to=find(o,"to","toAddress","to_address","recipient","recipient_address","dst","user","address");
+            String token=find(o,"tokenSymbol","token_symbol","symbol","token","asset","name");
+            String amount=find(o,"amount","value","tokenAmount","token_amount","quantity");
+            String usd=find(o,"usdValue","valueUsd","amountUsd","usd_value","transferUsd","transfer_usd");
+            String tx=find(o,"txHash","tx_hash","transactionHash","hash","transaction_hash");
+            String stamp=find(o,"timestamp","blockTimestamp","block_timestamp","timeStamp","createdAt","datetime","time","block_time","ts");
             if(from.isEmpty()&&to.isEmpty()&&tx.isEmpty())continue;
             String when=formatChainTime(stamp);
             StringBuilder line=new StringBuilder();
