@@ -127,9 +127,9 @@ public class MainActivity extends Activity {
     double rsi(double[] x,int p){double g=0,l=0;for(int i=Math.max(1,x.length-p);i<x.length;i++){double d=x[i]-x[i-1];if(d>=0)g+=d;else l-=d;}if(l==0)return 100;return 100-(100/(1+g/l));}
     double macd(double[] x){return ema(x,12)-ema(x,26);}
     void signals(){
-        content.removeAllViews();content.addView(tv("سیگنال‌های وال",27));content.addView(tv("فقط تحلیل قاعده‌مند از کندل زنده؛ بدون اعتمادسازی ساختگی.",12));
+        content.removeAllViews();content.addView(tv("سیگنال‌های وال",27));content.addView(tv("برآورد هم‌جهتی تغییرات چندبازه‌ای CoinMarketCap؛ نه تحلیل کندل تاریخی.",12));
         if(tickers==null){content.addView(tv("INSUFFICIENT DATA",15));return;}
-        int shown=0;for(int i=0;i<tickers.length()&&shown<12;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(s.isEmpty())continue;assetSignalCard(s+"USDT");shown++;}catch(Exception ignored){}
+        int shown=0;for(int i=0;i<tickers.length()&&shown<200;i++)try{String s=tickers.getJSONObject(i).optString("symbol");if(s.isEmpty())continue;assetSignalCard(s+"USDT");shown++;}catch(Exception ignored){}
     }
     void assetSignalCard(String s){
         JSONObject item=findMarketItem(s);if(item==null)return;Signal q=analyzeMarketItem(item);
