@@ -54,7 +54,7 @@ public class MainActivity extends Activity {
     void renderMarkets(LinearLayout list,String query){
         if(tickers==null){list.removeAllViews();list.addView(tv("در حال دریافت داده زنده بازار...",14));return;}
         list.removeAllViews();String q=query.toUpperCase(Locale.US);int n=0;
-        for(int i=0;i<tickers.length()&&n<80;i++)try{
+        for(int i=0;i<tickers.length()&&n<200;i++)try{
             JSONObject o=tickers.getJSONObject(i);String s=o.optString("symbol");
             if(s.isEmpty()||(!q.isEmpty()&&!s.contains(q)))continue;
             double p=o.optDouble("lastPrice"), ch=o.optDouble("priceChangePercent"), vol=o.optDouble("quoteVolume");
@@ -72,10 +72,10 @@ public class MainActivity extends Activity {
         TextView back=tv("‹  بازگشت",13);back.setOnClickListener(v->home());content.addView(back);
         TextView h=tv(symbol.replace("USDT",""),27);h.setTypeface(null,1);content.addView(h);
         TextView price=tv("در حال دریافت قیمت زنده...",18);content.addView(price);
-        LinearLayout tf=new LinearLayout(this);String[] tfs={"1m","5m","15m","1h","4h","1d","1w","1M"};for(String tfv:tfs){Button b=btn(tfv);tf.addView(b,new LinearLayout.LayoutParams(0,d(42),1));b.setOnClickListener(v->loadChart(symbol,tfv,price));}content.addView(tf);
+        LinearLayout tf=new LinearLayout(this);String[] tfs={"1h","24h","7d","30d","60d","90d"};for(String tfv:tfs){Button b=btn(tfv);tf.addView(b,new LinearLayout.LayoutParams(0,d(42),1));b.setOnClickListener(v->loadChart(symbol,tfv,price));}content.addView(tf);
         ChartView chart=new ChartView(this);chart.setBackgroundColor(Color.WHITE);content.addView(chart,new LinearLayout.LayoutParams(-1,d(330)));
         content.addView(tv("سیگنال وال",16));TextView sig=tv("در حال محاسبه...",15);sig.setPadding(d(12),d(10),d(12),d(10));sig.setBackground(box(Color.WHITE,12));content.addView(sig);
-        content.addView(tv("قدرت شواهد از قیمت، حجم و شاخص‌های تکنیکال زنده محاسبه می‌شود؛ درصد دقت پیش‌بینی نیست.",10));
+        content.addView(tv("مقایسهٔ چندبازه‌ای بر پایه تغییرات موجود در CoinMarketCap؛ این‌ها تایم‌فریم کندلی نیستند. کندل تاریخی در فید فعلی موجود نیست.",10));
         loadChart(symbol,"1h",price,chart,sig);
     }
 
@@ -84,12 +84,35 @@ public class MainActivity extends Activity {
         new Thread(()->{try{
             JSONObject item=findMarketItem(symbol);if(item==null)throw new IOException("دارایی در فهرست CoinMarketCap نیست");
             double last=item.optDouble("lastPrice"),change=item.optDouble("priceChangePercent");
+            String field="percent_change_24h",label="24h";
+            if("1h".equals(interval)){field="percent_change_1h";label="1h";}
+            else if("7d".equals(interval)){field="percent_change_7d";label="7d";}
+            else if("30d".equals(interval)){field="percent_change_30d";label="30d";}
+            else if("60d".equals(interval)){field="percent_change_60d";label="60d";}
+            else if("90d".equals(interval)){field="percent_change_90d";label="90d";}
+            final boolean has=item.has(field);final double period=has?item.optDouble(field):0;
             Signal signal=analyzeMarketItem(item);
-            runOnUiThread(()->{price.setText("$"+fmt(last)+"    تغییر ۲۴ساعته CMC: "+fmt2(change)+"% ");if(chart!=null)chart.setData(new ArrayList<>());if(sig!=null)sig.setText(signal.text+"\nنمودار کندلی تاریخی از فید CoinMarketCap فعلی دریافت نشده است.");});
+            runOnUiThread(()->{price.setText("$"+fmt(last)+"    تغییر "+label+": "+(has?fmt2(period)+"%":"در دسترس نیست")+"    | 24h: "+fmt2(change)+"%");if(chart!=null)chart.setData(new ArrayList<>());if(sig!=null)sig.setText(signal.text+"\\nاین بازه تغییر قیمت گزارش‌شدهٔ CMC است، نه کندل تاریخی. نمودار کندلی در فید فعلی موجود نیست.");});
         }catch(Exception e){runOnUiThread(()->price.setText("داده CoinMarketCap در دسترس نیست — "+e.getMessage()));}}).start();
     }
     JSONObject findMarketItem(String symbol){if(tickers==null)return null;String base=symbol.replace("USDT","");for(int i=0;i<tickers.length();i++){JSONObject o=tickers.optJSONObject(i);if(o!=null&&o.optString("symbol").equals(base))return o;}return null;}
-    Signal analyzeMarketItem(JSONObject o){double ch=o.optDouble("priceChangePercent"),cap=o.optDouble("marketCap"),vol=o.optDouble("quoteVolume");String name=ch>=3?"BUY WATCH":ch<=-3?"SELL RISK":"WAIT";String text="سیگنال: "+name+"\\nتغییر ۲۴ساعته CoinMarketCap: "+fmt2(ch)+"%\\nارزش بازار: $"+shortNum(cap)+"\\nحجم ۲۴ساعته: $"+shortNum(vol)+"\\nاین فیلتر سادهٔ تغییر روزانه است، نه پیش‌بینی قطعی یا تحلیل کندلی.";return new Signal(name,text);}
+    Signal analyzeMarketItem(JSONObject o){
+        double cap=o.optDouble("marketCap"),vol=o.optDouble("quoteVolume");
+        String[] keys={"percent_change_1h","priceChangePercent","percent_change_7d","percent_change_30d","percent_change_60d","percent_change_90d"};
+        String[] labels={"1h","24h","7d","30d","60d","90d"};
+        int bull=0,bear=0,valid=0;StringBuilder periods=new StringBuilder();
+        for(int i=0;i<keys.length;i++){
+            boolean has=i==1||o.has(keys[i]);double v=i==1?o.optDouble("priceChangePercent"):o.optDouble(keys[i]);
+            if(periods.length()>0)periods.append(" | ");
+            periods.append(labels[i]).append(": ");
+            if(!has){periods.append("N/A");continue;}
+            valid++;periods.append(fmt2(v)).append("%");
+            if(v>0.25)bull++;else if(v< -0.25)bear++;
+        }
+        String name=valid<3?"INSUFFICIENT DATA":bull>=4&&bull>bear?"BUY WATCH":bear>=4&&bear>bull?"SELL RISK":"WAIT";
+        String text="سیگنال چندبازه‌ای: "+name+"\\nهم‌جهتی صعودی: "+bull+" | نزولی: "+bear+" | بازهٔ معتبر: "+valid+"/6\\n"+periods+"\\nارزش بازار: $"+shortNum(cap)+" | حجم ۲۴ساعته: $"+shortNum(vol)+"\\nفیلتر تغییرات چندبازه‌ای CoinMarketCap است؛ تحلیل کندلی/اندیکاتور تاریخی و پیش‌بینی قطعی نیست.";
+        return new Signal(name,text);
+    }
 
     Signal analyze(ArrayList<Candle> c){
         int n=c.size();double[] closes=new double[n];for(int i=0;i<n;i++)closes[i]=c.get(i).c;
@@ -267,7 +290,7 @@ public class MainActivity extends Activity {
         status.setText("● اتصال به CoinMarketCap...");status.setTextColor(blue);
         new Thread(()->{Exception last=null;JSONArray converted=null;
             String[] endpoints={"https://pro-api.coinmarketcap.com/public-api/v3/cryptocurrency/listings/latest?start=1&limit=500&convert=USD","https://pro-api.coinmarketcap.com/public-api/v1/cryptocurrency/listings/latest?start=1&limit=500&convert=USD"};
-            for(String endpoint:endpoints){try{Object raw=getJsonAny(endpoint);JSONArray rows=extractList(raw);if(rows==null||rows.length()==0)throw new IOException("پاسخ فهرست CMC خالی است");JSONArray out=new JSONArray();for(int i=0;i<rows.length();i++){JSONObject c=rows.optJSONObject(i);if(c==null)continue;JSONObject quote=c.optJSONObject("quote");if(quote==null)continue;JSONObject usd=quote.optJSONObject("USD");if(usd==null)usd=quote.optJSONObject("usd");if(usd==null)continue;JSONObject item=new JSONObject();item.put("symbol",c.optString("symbol"));item.put("name",c.optString("name"));item.put("lastPrice",usd.optDouble("price"));item.put("priceChangePercent",usd.optDouble("percent_change_24h"));item.put("quoteVolume",usd.optDouble("volume_24h"));item.put("marketCap",usd.optDouble("market_cap"));out.put(item);}if(out.length()>0){converted=out;break;}}catch(Exception e){last=e;}}
+            for(String endpoint:endpoints){try{Object raw=getJsonAny(endpoint);JSONArray rows=extractList(raw);if(rows==null||rows.length()==0)throw new IOException("پاسخ فهرست CMC خالی است");JSONArray out=new JSONArray();for(int i=0;i<rows.length();i++){JSONObject c=rows.optJSONObject(i);if(c==null)continue;JSONObject quote=c.optJSONObject("quote");if(quote==null)continue;JSONObject usd=quote.optJSONObject("USD");if(usd==null)usd=quote.optJSONObject("usd");if(usd==null)continue;JSONObject item=new JSONObject();item.put("symbol",c.optString("symbol"));item.put("name",c.optString("name"));item.put("lastPrice",usd.optDouble("price"));item.put("priceChangePercent",usd.optDouble("percent_change_24h"));for(String k:new String[]{"percent_change_1h","percent_change_7d","percent_change_30d","percent_change_60d","percent_change_90d"})if(usd.has(k)&&!usd.isNull(k))item.put(k,usd.optDouble(k));item.put("quoteVolume",usd.optDouble("volume_24h"));item.put("marketCap",usd.optDouble("market_cap"));out.put(item);}if(out.length()>0){converted=out;break;}}catch(Exception e){last=e;}}
             final JSONArray found=converted;final Exception failure=last;runOnUiThread(()->{if(found!=null&&found.length()>0){tickers=found;status.setText("● بازار زنده · CoinMarketCap");status.setTextColor(green);home();}else{status.setText("● اتصال به CMC ناموفق — لمس برای تلاش مجدد");status.setTextColor(red);status.setOnClickListener(v->loadMarkets());content.removeAllViews();content.addView(tv("دریافت داده از CoinMarketCap ناموفق بود.",18));content.addView(tv("این نسخه برای قیمت بازار از API صرافی استفاده نمی‌کند. فید عمومی CMC ممکن است از شبکهٔ فعلی قابل‌دسترسی نباشد.",13));content.addView(tv("خطا: "+(failure==null?"پاسخ خالی":failure.getClass().getSimpleName()+": "+failure.getMessage()),11));Button retry=btn("تلاش دوباره");retry.setOnClickListener(v->loadMarkets());content.addView(retry,new LinearLayout.LayoutParams(-1,d(48)));}});
         }).start();
     }
