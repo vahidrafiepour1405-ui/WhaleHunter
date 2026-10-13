@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: iran-stock-scanner
+    runtime: docker
+    plan: free
+    rootDir: iran-stock-scanner
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: MAX_DATA_AGE_SECONDS
+        value: "180"
